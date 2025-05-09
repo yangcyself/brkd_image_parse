@@ -1,0 +1,15 @@
+# ImgToTable.action
+#
+# When called, the server will look at the most recent image
+# and return it as a 2D “table” (array of rows, each a sequence of strings).
+
+# ——— GOAL (empty — we don’t need any extra parameters)
+---
+
+# ——— RESULT
+string table_json
+string feedback
+---
+
+# ——— FEEDBACK (empty — not used here)
+string feedback
