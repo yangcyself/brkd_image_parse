@@ -133,6 +133,25 @@ So you should have the following answer for the image:
                 ),
             },
         ]
+        self.user_example3 = [
+            {"type": "input_text", "text": 
+"""
+For example for the following image you should have the following answer:
+{"width": 6, "height": 7, "table": [["empty", "empty", "empty", "blue", "blue", "blue"], 
+                                    ["empty", "empty", "empty", "blue", "blue", "blue"], 
+                                    ["blue", "blue", "blue", "blue", "empty", "empty"], 
+                                    ["empty", "red", "empty", "red", "empty", "empty"], 
+                                    ["blue", "blue", "blue", "blue", "empty", "empty"], 
+                                    ["darkblue", "darkblue", "darkblue", "darkblue", "empty", "empty"]]}
+"""
+             },
+            {
+                "type": "input_image",
+                "image_url": load_image_to_base64(
+                    "/home/chenyu/workspace/brkdai_ws/src/brkd_image_parse/data/example3.png"
+                ),
+            },
+        ]
 
     def image_callback(self, msg: Image):
         """Store the latest image frame"""
@@ -192,7 +211,7 @@ So you should have the following answer for the image:
                     {
                         "role": "user",
                         "content": 
-                            self.user_example1+self.user_example2[
+                            self.user_example1+self.user_example2+[
                             {"type": "input_text", "text": user_prompt},
                             {
                                 "type": "input_image",

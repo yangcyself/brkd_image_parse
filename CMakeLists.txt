@@ -26,6 +26,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 install(PROGRAMS
   scripts/brkd_image_parse_node.py
   scripts/brkd_image_parse_client.py
+  scripts/mega_block_state_estimator.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
