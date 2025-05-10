@@ -6,7 +6,7 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 import cv2
 import numpy as np
-
+from std_msgs.msg import Int32MultiArray, MultiArrayLayout, MultiArrayDimension
 
 polygon_points = [
     
@@ -35,6 +35,7 @@ class MegaBlockStateEstimator(Node):
         self.sub = self.create_subscription(Image, '/image_raw', self.image_callback, 10)
         self.polygon_pub = self.create_publisher(Image, '/polygon_overlay', 10)
         self.grid_pub = self.create_publisher(Image, '/grid_overlay', 10)
+        self.table_pub = self.create_publisher(Int32MultiArray, '/table_state', 10)
 
     def image_callback(self, msg: Image):
         # Convert ROS Image to OpenCV
@@ -89,6 +90,18 @@ class MegaBlockStateEstimator(Node):
 
         # 5) Publish grid overlay on cropped image
         self.publish_grid_overlay(crop, cell_w, cell_h, has_block_table)
+
+        square_table = has_block_table[::2,:] | has_block_table[1::2,:]
+        msg = Int32MultiArray(
+            data = square_table.flatten().astype(np.int32).tolist(),
+            layout = MultiArrayLayout(
+                dim=[MultiArrayDimension(label='rows', size=square_table.shape[0], stride=square_table.size),
+                     MultiArrayDimension(label='cols', size=square_table.shape[1], stride=1)],
+                data_offset=0
+            )
+        )
+        self.table_pub.publish(msg)
+
 
     def publish_polygon_overlay(self, img: np.ndarray):
         overlay = img.copy()

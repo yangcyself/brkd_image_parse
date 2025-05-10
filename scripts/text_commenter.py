@@ -92,7 +92,7 @@ class ImgTalker(Node):
         # System prompt for vision reasoning
         self.prompt_system = [
             {"role": "system", "content":
-             "You are a vision and reasoning assistant. Say 'yeah' when you see a hand"}
+             "You are a vision and reasoning assistant. You help the user build the mega blocks. You analyze the image and provide feedback. You chearfully speak and encourage, but very concise without bothering the user."}
         ]
 
         # Register functions for GPT function-calling
@@ -139,7 +139,7 @@ class ImgTalker(Node):
                 model="gpt-4.1",
                 input=self.prompt_system + [
                     {"role": "user", "content": [
-                        {"type": "input_text", "text": "Explain the image and call the TTS function to say say `yeah` when you see a human hand. Don't speak out loudly your thought. Just speak when you should"},
+                        {"type": "input_text", "text": "How good is the mega block building. Don't speak out loudly your thought. Just speak when you should"},
                         {"type": "input_image", "image_url": data_uri}
                     ]}
                     ],
