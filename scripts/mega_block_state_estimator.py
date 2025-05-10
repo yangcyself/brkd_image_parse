@@ -9,10 +9,11 @@ import numpy as np
 
 
 polygon_points = [
-    [250.0, 100.0], # left top
-    [570.0, 100.0], # right top
-    [570.0, 410.0], # right bottom
-    [273.0, 395.0], # left bottom
+    
+    [169, 54], # left top
+    [601, 40], # right top
+    [612, 460], # right bottom
+    [159, 455], # left bottom
 ]
 
 class MegaBlockStateEstimator(Node):
@@ -20,8 +21,8 @@ class MegaBlockStateEstimator(Node):
         super().__init__('mega_block_state_estimator')
         # Define the 4 points of the convex polygon (modify via ROS2 parameters if desired)
         # self.declare_parameter('polygon_points', [100.0, 100.0, 400.0, 100.0, 400.0, 400.0, 100.0, 400.0])
-        self.declare_parameter('grid_rows', 9)
-        self.declare_parameter('grid_cols', 5)
+        self.declare_parameter('grid_rows', 16)
+        self.declare_parameter('grid_cols', 10)
 
         # pts_list = self.get_parameter('polygon_points').value
         # self.pts = np.array(pts_list, dtype=np.int32).reshape((-1, 2))
@@ -64,7 +65,7 @@ class MegaBlockStateEstimator(Node):
             for j in range(self.grid_cols):
                 y1, y2 = i * cell_h, (i + 1) * cell_h if i < self.grid_rows - 1 else h_crop
                 x1, x2 = j * cell_w, (j + 1) * cell_w if j < self.grid_cols - 1 else w_crop
-                cell = crop[y1+2:y2-2, x1+2:x2-2]
+                cell = crop[y1+4:y2-4, x1+4:x2-4]
                 mean_bgr = cv2.mean(cell)[:3]
                 mean_bgr_table[i, j] = mean_bgr
                 gray = cv2.cvtColor(cell, cv2.COLOR_BGR2GRAY)
