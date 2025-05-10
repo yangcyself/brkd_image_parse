@@ -38,6 +38,24 @@ from brkd_image_parse.action import ImgToTable
 import openai
 import cv2
 
+
+def load_image_to_base64(image_path):
+    """Load an image from a file and encode it to base64."""
+    with open(image_path, "rb") as image_file:
+        image_data = image_file.read()
+    jpg_b64 = base64.b64encode(image_data).decode('utf-8')
+    data_uri = f"data:image/jpeg;base64,{jpg_b64}"
+    return data_uri
+
+def encode_image_to_base64(image):
+    success, buffer = cv2.imencode('.jpg', image)
+    if not success:
+        return False, None
+
+    jpg_b64 = base64.b64encode(buffer).decode('utf-8')
+    data_uri = f"data:image/jpeg;base64,{jpg_b64}"
+    return True, data_uri
+
 class ImgToTableServer(Node):
     def __init__(self):
         super().__init__('img_to_table_server')
@@ -67,6 +85,54 @@ class ImgToTableServer(Node):
         openai.api_key = os.getenv('OPENAI_API_KEY')
         if not openai.api_key:
             self.get_logger().warn('OpenAI API key not set!')
+
+        # with open("/home/chenyu/workspace/brkdai_ws/src/brkd_image_parse/data/example1.png", "rb") as exampple_1_f:
+        #     example_1 = exampple_1_f.read()
+        # with open("/home/chenyu/workspace/brkdai_ws/src/brkd_image_parse/data/example2.png", "rb") as exampple_2_f:
+        #     example_2 = exampple_2_f.read()
+
+        self.prompt_system = [
+            {"type": "input_text", "text": 
+"""
+You are a vision and reasoning assistant.  Given an image of Mega Blocks, return a JSON object with the following fields.
+The user teach you how to analyze the image with examples and you understand and follow the examples
+width: should be the maximum from left to right
+height: the total number of layers
+table: a 2D table where each element is the color or type of each block cell. 
+
+"""
+             },
+        ]
+        self.user_example1 = [
+            {"type": "input_text", "text": 
+"""
+For example in the following image the two blocks are stacked together. Note that in your answer connection knob is not counted as a block. And note the unit of the height is half of the unit of the height.
+So you should have the following answer for the image:
+{"width": 2, "height": 3, "table": [["empty", "blue"], ["empty", "blue"], ["purple", "purple"]]}
+"""
+             },
+            {
+                "type": "input_image",
+                "image_url": load_image_to_base64(
+                    "/home/chenyu/workspace/brkdai_ws/src/brkd_image_parse/data/example1.png"
+                ),
+            },
+        ]
+        self.user_example2 = [
+            {"type": "input_text", "text": 
+"""
+For example in the following image the two blocks are stacked together. Note that in your answer connection knob is not counted as a block. And note the unit of the height is half of the unit of the height.
+So you should have the following answer for the image:
+{"width": 3, "height": 3, "table": [["empty", "red", "red"], ["green", "green", "empty"], ["green", "green", "empty"]]}
+"""
+             },
+            {
+                "type": "input_image",
+                "image_url": load_image_to_base64(
+                    "/home/chenyu/workspace/brkdai_ws/src/brkd_image_parse/data/example2.png"
+                ),
+            },
+        ]
 
     def image_callback(self, msg: Image):
         """Store the latest image frame"""
@@ -100,28 +166,18 @@ class ImgToTableServer(Node):
             image_to_process = self.latest_image.copy()
 
         # Encode as JPEG and then base64
-        success, buffer = cv2.imencode('.jpg', image_to_process)
+        success, data_uri = encode_image_to_base64(image_to_process)
         if not success:
-            self.get_logger().error('Failed to encode image to JPEG')
+            self.get_logger().error('Failed to encode image to base64')
             goal_handle.abort()
             result = ImgToTable.Result()
             result.table_json = ''
-            result.feedback = 'JPEG encoding failed'
+            result.feedback = 'Image encoding failed'
             return result
 
-        jpg_b64 = base64.b64encode(buffer).decode('utf-8')
-        data_uri = f"data:image/jpeg;base64,{jpg_b64}"
-
         # Function to encode the image
-        # Construct prompt for ChatGPT
-        system_prompt = (
-            "You are a vision and reasoning assistant. "
-            "Given an image of Mega Blocks, return a JSON 2D array where each element is the color or type of each block cell."
-        )
         user_prompt = (
-            f"Here is the image of Mega Blocks. "
-            f"Please analyze it and return only the JSON array (2D) of blocks, extra text "
-            # f"no extra text. Image: {data_uri}"
+            f"Please analyze the following image. "
         )
 
         try:
@@ -131,17 +187,16 @@ class ImgToTableServer(Node):
                 input=[
                     {
                         "role": "system",
-                        "content": [
-                            {"type": "input_text", "text": system_prompt},
-                        ],
+                        "content": self.prompt_system,
                     },
                     {
                         "role": "user",
-                        "content": [
+                        "content": 
+                            self.user_example1+self.user_example2[
                             {"type": "input_text", "text": user_prompt},
                             {
                                 "type": "input_image",
-                                "image_url": f"data:image/jpeg;base64,{jpg_b64}",
+                                "image_url": data_uri,
                             },
                         ],
                     }
