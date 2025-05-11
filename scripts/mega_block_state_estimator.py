@@ -10,10 +10,10 @@ from std_msgs.msg import Int32MultiArray, MultiArrayLayout, MultiArrayDimension
 
 polygon_points = [
     
-    [169, 54], # left top
-    [601, 40], # right top
-    [612, 460], # right bottom
-    [159, 455], # left bottom
+    [113, 65], # left top
+    [594, 62], # right top
+    [594, 462], # right bottom
+    [111, 447], # left bottom
 ]
 
 class MegaBlockStateEstimator(Node):
@@ -21,7 +21,7 @@ class MegaBlockStateEstimator(Node):
         super().__init__('mega_block_state_estimator')
         # Define the 4 points of the convex polygon (modify via ROS2 parameters if desired)
         # self.declare_parameter('polygon_points', [100.0, 100.0, 400.0, 100.0, 400.0, 400.0, 100.0, 400.0])
-        self.declare_parameter('grid_rows', 16)
+        self.declare_parameter('grid_rows', 14)
         self.declare_parameter('grid_cols', 10)
 
         # pts_list = self.get_parameter('polygon_points').value
