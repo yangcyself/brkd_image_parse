@@ -14,6 +14,7 @@ import io
 # import pyaudio
 from pydub import AudioSegment
 from pydub.playback import play
+import random
 # from playsound import playsound
 
 def load_image_to_base64(image_path):
@@ -73,6 +74,7 @@ class ImgTalker(Node):
         self.bridge = CvBridge()
         self.latest_image = None
         self.lock = threading.Lock()
+        self.count = 0
 
         # Subscribe to raw image frames
         self.create_subscription(
@@ -92,8 +94,24 @@ class ImgTalker(Node):
         # System prompt for vision reasoning
         self.prompt_system = [
             {"role": "system", "content":
-             "You are a vision and reasoning assistant. You help the user build the mega blocks. You analyze the image and provide feedback. You chearfully speak and encourage, but very concise without bothering the user."}
+"""
+You are a vision and reasoning assistant. You help a kid to build the mega blocks. 
+You are witty, slightly sassy, and always impeccably polite
+You calls the tool `speak` so that you can talk to the kid. The kid can not hear you unless you call the `speak` function. 
+The responses without `speak` are just for you and the parent to understand.
+You have a robot arm that helps the kid to build legos. You assist the kid but the kid might has a different idea. So you need to `speak` and communitcate.
+Keep the speak sentence short, but also witty and clever. Each response should take about 5 seconds to read aloud unless the user is asking for something more complex.
+While the child does use legos, you can pretend they're working on a major project just happen to be using legos.
+Don't be excessively verbose, and don't be too \"nice\" or \"sweet\". Use comebacks and sarcasm, sometimes quite excessively so.
+Don't start with building with legos or anything like that. Just greet broadly and ask how you can help.
+In conversation, try not to say Legos or Lego bricks too often just to keep the pretense that this is a major project, but it is okay to say it once in a while.
+The thing is the user has a  robot arm with which to build, and this arm will pick up and place the bricks, so you can say that the user is using a robot arm to build with.
+But for now, we can only build 2D mosaic-like vertical but flat structures, so don't say anything about building 3D structures.
+Here are some examples of simple designs we can build: cat, up arrow, down arrow, house, human, heart, arc
+But of course, keep the pretense that this is a major project, and don't say anything about building 2D structures.
+"""}
         ]
+        self.history = []
 
         # Register functions for GPT function-calling
         self.functions = [
@@ -128,6 +146,7 @@ class ImgTalker(Node):
             if self.latest_image is None:
                 return
             image_copy = self.latest_image.copy()
+        self.count += 1
 
         success, data_uri = encode_image_to_base64(image_copy)
         if not success:
@@ -135,17 +154,63 @@ class ImgTalker(Node):
             return
 
         try:
+            if self.count % 5 == 0:
+                self.history += [
+                        {"role": "user", "content": [
+                            {"type": "input_text", "text": 
+                             "please invoke the speak function to say something, maybe guess what the kid is trying to build. "
+                             },
+                            {"type": "input_image", "image_url": data_uri}
+                        ]}
+                ]
+            elif self.count % 5 == 1:
+                target = random.choice(["elephant", "cat", "house", "mountail", "car"])
+                self.history += [
+                        {"role": "user", "content": [
+                            {"type": "input_text", 
+                             "text": 
+                              (f"The goal is to build an {target}, does it look like? ")
+                             },
+                            {"type": "input_image", "image_url": data_uri}
+                        ]}
+                ]
+            elif self.count % 5 == 2:
+                self.history += [
+                        {"role": "user", "content": [
+                            {"type": "input_text", 
+                             "text": 
+                              ("What do you think will be possible to improve the building?")
+                             },
+                            {"type": "input_image", "image_url": data_uri}
+                        ]}
+                ]
+            elif self.count % 5 == 3:
+                self.history += [
+                        {"role": "user", "content": [
+                            {"type": "input_text", 
+                             "text": 
+                              ("Analyze the current status, which part is which? No need to speak out loudly your thought. But if there is anything interesting, please `speak` it out. ")
+                             },
+                            {"type": "input_image", "image_url": data_uri}
+                        ]}
+                ]
+            else:
+                self.history += [
+                        {"role": "user", "content": [
+                            {"type": "input_text", 
+                             "text": 
+                              ("How good is the mega block building. What's the difference compared to the previous image. Don't speak out loudly your thought. "
+                              "Just `speak` when you should. Don't be silent all the time but don't be too repetitive. ")
+                             },
+                            {"type": "input_image", "image_url": data_uri}
+                        ]}
+                ]
             response = client.responses.create(
                 model="gpt-4.1",
-                input=self.prompt_system + [
-                    {"role": "user", "content": [
-                        {"type": "input_text", "text": "How good is the mega block building. Don't speak out loudly your thought. Just speak when you should"},
-                        {"type": "input_image", "image_url": data_uri}
-                    ]}
-                    ],
+                input=self.prompt_system + self.history,
                 tools=self.functions,
             )
-            print(response.output)
+            print(response)
             for message in response.output:
                 if message.type == "function_call" and  message.name == "speak":
                     args = json.loads(message.arguments)
@@ -153,7 +218,9 @@ class ImgTalker(Node):
                     instruction_to_speak = args.get('instructions', '')
                     self.get_logger().info(f"Speaking via TTS: {text_to_speak}")
                     speak(text_to_speak, instruction_to_speak)
-                    
+                elif message.type != "function_call":
+                    self.history.append(message)
+            self.history = self.history[-5:]  # Keep the last 5 messages
         except Exception as e:
             self.get_logger().error(f'GPT API call failed: {e}')
 
